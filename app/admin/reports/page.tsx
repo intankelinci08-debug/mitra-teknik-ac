@@ -301,7 +301,7 @@ export default function AdminReportsPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis tickFormatter={(value) => `Rp${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => [`Rp${value.toLocaleString()}`, 'Pendapatan']} />
+                <Tooltip formatter={(value) => [`Rp${Number(value || 0).toLocaleString()}`, 'Pendapatan']} />
                 <Legend />
                 <Line type="monotone" dataKey="revenue" stroke="#00A6C4" strokeWidth={2} name="Pendapatan" />
               </LineChart>
