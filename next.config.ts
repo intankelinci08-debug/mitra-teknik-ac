@@ -1,12 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'export', // <--- Tambahkan baris ini
   typescript: {
-    // Abaikan error TypeScript agar proses build Cloudflare berhasil
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Abaikan peringatan ESLint saat build
     ignoreDuringBuilds: true,
   },
 };
