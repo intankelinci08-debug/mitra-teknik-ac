@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mitra Teknik Mandiri - Sistem Manajemen Booking & Servis AC</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Library untuk Export Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'] },
+      colors: {
+        brand: {
+          50:'#f0f9ff',100:'#e0f2fe',500:'#0ea5e9',
+          600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e',
+        }
+      }
+    }
+  }
+}
+</script>
+<style>
+body { font-family: 'Inter', sans-serif; }
+.glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+<header class="bg-brand-900 text-white shadow-lg sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex items-center space-x-3">
+        <div class="bg-brand-500 p-2 rounded-lg text-white shadow">
+          <i class="fa-solid fa-snowflake text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-lg leading-tight truncate max-w-[120px] sm:max-w-none">Mitra Teknik Mandiri</h1>
+          <p class="text-xs text-brand-100 hidden sm:block">Jl. Bratasena V blok BC 3 no 11, Pamulang</p>
+        </div>
+      </div>
+      <!-- Ganti tombol mode akses dengan Dropdown -->
+      <div id="header-actions" class="flex items-center gap-2">
+        <select id="role-selector" onchange="switchRole(this.value)" class="bg-brand-800 text-white text-xs font-semibold border border-brand-600 rounded-lg px-2 py-1.5 outline-none cursor-pointer">
+          <option value="customer">👤 Pelanggan</option>
+          <option value="technician">🔧 Teknisi</option>
+          <option value="admin">🛡️ Admin</option>
+        </select>
+        <!-- Tombol Keluar akan otomatis muncul di sini oleh JavaScript -->
+      </div>
+    </div>
+  </div>
+  <div class="bg-brand-800 text-brand-100 text-xs px-4 py-1 text-center sm:hidden border-t border-brand-700">
+    <i class="fa-solid fa-location-dot mr-1"></i> Pamulang, Tangerang Selatan (0878-8402-6093)
+  </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+  <!-- ================= CUSTOMER VIEW ================= -->
+  <section id="view-customer" class="space-y-6">
+    <div class="bg-gradient-to-r from-brand-600 to-cyan-600 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-center">
+      <div class="space-y-2 mb-4 md:mb-0">
+        <span class="bg-white/20 text-xs px-3 py-1 rounded-full uppercase tracking-wider font-semibold">Layanan Cepat & Bergaransi</span>
+        <h2 class="text-2xl sm:text-3xl font-bold">Jasa Servis & Perawatan AC Pamulang</h2>
+        <p class="text-brand-100 text-sm max-w-xl">
+          Melayani cuci AC, isi freon, bongkar pasang, dan perbaikan kerusakan AC rumah & kantor wilayah Tangerang Selatan dan sekitarnya.
+        </p>
+      </div>
+      <button onclick="document.getElementById('form-booking').scrollIntoView({behavior:'smooth'})" class="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center space-x-2">
+        <i class="fa-solid fa-calendar-plus text-lg"></i>
+        <span>Pesan Servis Sekarang</span>
+      </button>
+    </div>
+      <!-- Daftar Harga -->
+      <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <button onclick="togglePriceList()" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition">
+          <div class="flex items-center gap-3">
+            <div class="bg-amber-100 text-amber-600 p-2 rounded-lg">
+              <i class="fa-solid fa-tags"></i>
+            </div>
+            <div class="text-left">
+              <h3 class="text-base font-bold text-slate-800">Daftar Harga Service AC</h3>
+              <p class="text-xs text-slate-500">Klik untuk lihat rincian harga</p>
+            </div>
+          </div>
+          <i id="price-chevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+        </button>
+        <div id="price-list" class="hidden border-t border-slate-100 p-5 bg-slate-50/50">
+
+          <div id="price-list-content" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <p class="text-xs text-slate-400 italic text-center py-4 col-span-2">Memuat daftar harga…</p>
+          </div>
+
+          <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 space-y-1">
+            <p><strong>Catatan:</strong></p>
+            <p>• Jika total jasa kurang dari <strong>Rp 75.000</strong>, berlaku biaya minimum Rp 75.000.</p>
+            <p>• Biaya pengecekan <strong>tidak dikenakan</strong> jika pelanggan menggunakan jasa lain.</p>
+            <p>• Untuk apartemen dikenakan tambahan <strong>Rp 20.000</strong>.</p>
+          </div>
+
+        </div>
+      </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4 border-b pb-3">
+          <h3 class="text-lg font-bold text-slate-800 flex items-center">
+            <i class="fa-solid fa-clipboard-list text-brand-600 mr-2"></i> Form Booking Servis AC
+          </h3>
+          <span class="text-xs text-slate-500">*Wajib diisi</span>
+        </div>
+
+        <form id="form-booking" onsubmit="handleCustomerBooking(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap *</label>
+              <input type="text" id="cust-name" required placeholder="Budi Santoso" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor WhatsApp *</label>
+              <input type="tel" id="cust-phone" required placeholder="081234567890" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Alamat Lengkap Servis *</label>
+            <textarea id="cust-address" rows="2" required placeholder="Contoh: Jl. Melati No. 12, RT 03/RW 05, Pamulang" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm"></textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Merk AC</label>
+              <select id="cust-ac-brand" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+                <option value="Daikin">Daikin</option>
+                <option value="Panasonic">Panasonic</option>
+                <option value="Sharp">Sharp</option>
+                <option value="LG">LG</option>
+                <option value="Gree">Gree</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Layanan</label>
+              <select id="cust-service-type" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+                <option value="Cuci / Maintenance AC">Cuci / Perawatan AC</option>
+                <option value="Tambah / Isi Freon">Tambah / Isi Freon</option>
+                <option value="AC Tidak Dingin / Bocor">AC Tidak Dingin / Bocor</option>
+                <option value="Bongkar Pasang AC">Bongkar Pasang AC</option>
+                <option value="Perbaikan Kerusakan Berat">Perbaikan Kerusakan Berat</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Diinginkan *</label>
+              <input type="date" id="cust-date" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Keluhan / Catatan Tambahan</label>
+            <input type="text" id="cust-notes" placeholder="Contoh: AC meneteskan air, butuh tangga tinggi" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+          </div>
+
+          <button type="submit" id="btn-submit-booking" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition shadow hover:shadow-lg flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Kirim Permintaan Booking</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="space-y-6">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <h3 class="text-base font-bold text-slate-800 mb-3 flex items-center">
+            <i class="fa-solid fa-magnifying-glass text-brand-600 mr-2"></i> Cek Status Booking Anda
+          </h3>
+          <p class="text-xs text-slate-500 mb-4">Lacak status pekerjaan teknisi berdasarkan Nomor HP Anda.</p>
+          <div class="flex space-x-2 mb-4">
+            <input type="tel" id="track-phone" placeholder="Masukkan No. HP Anda" class="flex-grow px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+            <button onclick="trackCustomerBooking()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium">Cari</button>
+          </div>
+          <div id="tracking-results" class="space-y-3">
+            <p class="text-xs text-slate-400 italic text-center py-4">Status pemesanan akan ditampilkan di sini.</p>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-slate-900 to-brand-900 text-white rounded-2xl p-6 shadow-md">
+          <h4 class="font-bold text-sm text-brand-50 mb-2 flex items-center">
+            <i class="fa-solid fa-store text-yellow-400 mr-2"></i> Bengkel Utama Usaha
+          </h4>
+          <div class="space-y-2 text-xs text-slate-300">
+            <p><strong class="text-white">Nama:</strong> Mitra Teknik Mandiri</p>
+            <p><strong class="text-white">Alamat:</strong> Jl. Bratasena V blok BC 3 no 11 Pondok Benda Pamulang Tangerang Selatan 15416</p>
+            <p><strong class="text-white">Jam Operasional:</strong> 08:00 - 17:00 WIB (Senin - Minggu)</p>
+            <p><strong class="text-white">Kontak:</strong> 0878-8402-6093</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TECHNICIAN VIEW ================= -->
+  <section id="view-technician" class="hidden space-y-6">
+    <div class="bg-slate-800 text-white rounded-2xl p-5 shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <div>
+        <h2 class="text-xl font-bold flex items-center">
+          <i class="fa-solid fa-hard-hat text-yellow-400 mr-2"></i> Panel Kerja Teknisi
+        </h2>
+        <p class="text-xs text-slate-300">Kelola tugas servis, update status pengerjaan, dan input rincian biaya.</p>
+      </div>
+      <div class="mt-3 sm:mt-0 flex items-center space-x-2">
+        <label class="text-xs text-slate-300">Pilih ID Teknisi:</label>
+        <select id="tech-selector" onchange="renderTechnicianJobs()" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg border border-slate-600 outline-none">
+          <option value="Teknisi Budi">Teknisi Budi (AC Specialist)</option>
+          <option value="Teknisi Agus">Teknisi Agus (Pendingin Senior)</option>
+          <option value="Teknisi Joko">Teknisi Joko (Elektro)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center">
+        <i class="fa-solid fa-list-check text-brand-600 mr-2"></i> Daftar Tugas Hari Ini
+      </h3>
+      <div id="technician-jobs-list" class="space-y-4"></div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-history text-brand-600 mr-2"></i> Riwayat Maintenance Rumah Pelanggan
+        </h3>
+        <input type="text" id="tech-search-history" onkeyup="filterHistoryLogs('tech')" placeholder="Cari nama atau alamat..." class="px-3 py-1.5 border rounded-lg text-xs w-full sm:w-64">
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">Tanggal</th>
+              <th class="p-3">Pelanggan</th>
+              <th class="p-3">Alamat</th>
+              <th class="p-3">Layanan / Solusi</th>
+              <th class="p-3">Teknisi</th>
+              <th class="p-3">Biaya</th>
+            </tr>
+          </thead>
+          <tbody id="tech-history-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ADMIN VIEW ================= -->
+  <section id="view-admin" class="hidden space-y-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500 font-medium">Total Booking</p>
+          <h4 id="stat-total" class="text-2xl font-bold text-slate-800">0</h4>
+        </div>
+        <div class="p-3 bg-brand-50 text-brand-600 rounded-xl"><i class="fa-solid fa-book text-xl"></i></div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500 font-medium">Perlu Penugasan</p>
+          <h4 id="stat-pending" class="text-2xl font-bold text-amber-600">0</h4>
+        </div>
+        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i class="fa-solid fa-clock-rotate-left text-xl"></i></div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500 font-medium">Sedang Diproses</p>
+          <h4 id="stat-progress" class="text-2xl font-bold text-blue-600">0</h4>
+        </div>
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i class="fa-solid fa-truck-fast text-xl"></i></div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500 font-medium">Selesai</p>
+          <h4 id="stat-completed" class="text-2xl font-bold text-emerald-600">0</h4>
+        </div>
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i class="fa-solid fa-circle-check text-xl"></i></div>
+      </div>
+    </div>
+
+    <!-- Laporan Pendapatan Bulanan -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-chart-line text-emerald-600 mr-2"></i> Laporan Pendapatan Bulanan
+        </h3>
+        <div class="flex items-center gap-2">
+          <input type="month" id="report-month" class="px-3 py-1.5 border rounded-lg text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+          <button onclick="loadReport()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-lg font-semibold">
+            <i class="fa-solid fa-search mr-1"></i> Tampilkan
+          </button>
+          <button onclick="exportReportExcel()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-semibold">
+  <i class="fa-solid fa-file-excel mr-1"></i> Export Excel
+</button>
+        </div>
+      </div>
+
+      <div id="report-summary" class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <p class="text-xs text-slate-500 font-medium">Total Pendapatan</p>
+          <p id="rep-income" class="text-2xl font-bold text-emerald-600 mt-1">Rp 0</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <p class="text-xs text-slate-500 font-medium">Jumlah Servis</p>
+          <p id="rep-count" class="text-2xl font-bold text-brand-600 mt-1">0</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <p class="text-xs text-slate-500 font-medium">Rata-rata per Servis</p>
+          <p id="rep-avg" class="text-2xl font-bold text-slate-700 mt-1">Rp 0</p>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <p class="text-xs text-slate-500 font-medium">Total Diskon</p>
+          <p id="rep-discount" class="text-2xl font-bold text-red-500 mt-1">Rp 0</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <h4 class="text-xs font-bold text-slate-700 mb-2">Performa Teknisi</h4>
+          <div id="rep-by-tech" class="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 min-h-[80px]">
+            <p class="text-slate-400 italic text-center py-4">Belum ada data.</p>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-slate-700 mb-2">Per Jenis Layanan</h4>
+          <div id="rep-by-service" class="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 min-h-[80px]">
+            <p class="text-slate-400 italic text-center py-4">Belum ada data.</p>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="text-xs font-bold text-slate-700 mb-2">Detail Servis Selesai</h4>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-2">Tanggal</th>
+              <th class="p-2">ID</th>
+              <th class="p-2">Pelanggan</th>
+              <th class="p-2">Layanan</th>
+              <th class="p-2">Teknisi</th>
+              <th class="p-2 text-right">Biaya</th>
+            </tr>
+          </thead>
+          <tbody id="rep-detail-tbody" class="divide-y divide-slate-100">
+            <tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Pilih bulan lalu klik Tampilkan.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pengingat Servis Berkala -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center">
+        <i class="fa-solid fa-bell text-amber-500 mr-2"></i> Pengingat Servis Berkala (3 Bulan ke Depan)
+      </h3>
+      <div id="reminders-list" class="space-y-3">
+        <p class="text-xs text-slate-400 italic text-center py-4">Memuat…</p>
+      </div>
+    </div>
+
+    <!-- Manajemen Pesanan & Penugasan Teknisi -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-user-gear text-brand-600 mr-2"></i> Manajemen Pesanan & Penugasan Teknisi
+        </h3>
+        <div class="flex space-x-2">
+          <button onclick="seedSampleData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border">
+            <i class="fa-solid fa-database mr-1"></i> Isi Data Contoh
+          </button>
+          <button onclick="resetData()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg border border-red-200">
+            Reset All
+          </button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">ID / Tgl</th>
+              <th class="p-3">Pelanggan & WA</th>
+              <th class="p-3">Alamat</th>
+              <th class="p-3">Servis & AC</th>
+              <th class="p-3">Teknisi Ditugaskan</th>
+              <th class="p-3">Status</th>
+              <th class="p-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="admin-bookings-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Manajemen Harga Layanan -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-tags text-amber-500 mr-2"></i> Manajemen Harga Layanan
+        </h3>
+        <button onclick="openServiceModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-lg font-semibold">
+          <i class="fa-solid fa-plus mr-1"></i> Tambah Layanan
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">Kategori</th>
+              <th class="p-3">Nama Layanan</th>
+              <th class="p-3 text-right">Harga</th>
+              <th class="p-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="admin-services-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Manajemen Teknisi -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-users-gear text-brand-600 mr-2"></i> Manajemen Teknisi
+        </h3>
+        <button onclick="openTechManageModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-lg font-semibold">
+          <i class="fa-solid fa-plus mr-1"></i> Tambah Teknisi
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">Nama</th>
+              <th class="p-3">Spesialis</th>
+              <th class="p-3">Telepon</th>
+              <th class="p-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="admin-technicians-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Manajemen Akun -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-key text-amber-500 mr-2"></i> Manajemen Akun & Password
+        </h3>
+        <button onclick="openAddAkunModal()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-lg font-semibold">
+          <i class="fa-solid fa-plus mr-1"></i> Tambah Akun
+        </button>
+      </div>
+
+      <!-- Tabel List Akun (TAMBAHAN BARU) -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">Nama Lengkap</th>
+              <th class="p-3">Username</th>
+              <th class="p-3">Role</th>
+              <th class="p-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div> <!-- Penutup div Manajemen Akun -->
+
+    <!-- Modal Edit Akun (Dipindah ke luar tabel, sudah dilengkapi input) -->
+    <div id="modal-edit-akun" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="text-base font-bold text-slate-800" id="modal-akun-title">Edit Akun</h3>
+          <button onclick="closeEditAkunModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <input type="hidden" id="edit-old-username">
+        
+        <!-- Tambahan Input Nama Lengkap -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap *</label>
+          <input type="text" id="edit-name" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+
+        <!-- Tambahan Input Role -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Role *</label>
+          <select id="edit-role" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+            <option value="admin">Admin</option>
+            <option value="technician">Teknisi</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Username *</label>
+          <input type="text" id="edit-new-username" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Password *</label>
+          <input type="text" id="edit-new-password" placeholder="Minimal 6 karakter" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button onclick="closeEditAkunModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+          <button onclick="saveEditAkun()" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold hover:bg-brand-700 shadow">Simpan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rekap Riwayat Servis Pelanggan -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h3 class="text-base font-bold text-slate-800 flex items-center">
+          <i class="fa-solid fa-folder-open text-brand-600 mr-2"></i> Rekap Riwayat Servis Pelanggan
+        </h3>
+        <input type="text" id="admin-search-history" onkeyup="filterHistoryLogs('admin')" placeholder="Cari nama / nomor HP / alamat..." class="px-3 py-1.5 border rounded-lg text-xs w-full sm:w-64">
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+            <tr>
+              <th class="p-3">Tanggal Selesai</th>
+              <th class="p-3">Pelanggan</th>
+              <th class="p-3">Alamat</th>
+              <th class="p-3">Detail AC & Servis</th>
+              <th class="p-3">Catatan Perbaikan</th>
+              <th class="p-3">Biaya Akhir</th>
+            </tr>
+          </thead>
+          <tbody id="admin-history-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Modal Login Admin/Teknisi -->
+<div id="modal-login" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+    <div class="text-center">
+      <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl mx-auto flex items-center justify-center mb-3">
+        <i class="fa-solid fa-lock text-2xl"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800">Login <span id="login-role-label">Admin</span></h3>
+      <p class="text-xs text-slate-500 mt-1">Masukkan password untuk melanjutkan</p>
+    </div>
+    <form id="form-login" class="space-y-3">
+      <input type="text" id="login-username" required placeholder="Username" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none text-center">
+      <input type="password" id="login-password" required placeholder="Password" class="w-full px-3 py-3 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none text-center">
+      <p id="login-error" class="text-xs text-red-600 text-center hidden"></p>
+      <div class="flex space-x-2 pt-1">
+        <button type="button" onclick="closeLoginModal()" class="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200">Batal</button>
+        <button type="submit" id="btn-login-submit" class="flex-1 px-4 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700 shadow">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Modal Manajemen Harga -->
+<div id="modal-service" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="text-base font-bold text-slate-800" id="service-modal-title">Tambah Layanan</h3>
+      <button onclick="closeServiceModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <input type="hidden" id="service-id">
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori *</label>
+      <input type="text" id="service-category" list="category-list" placeholder="Cuci & Maintenance" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+      <datalist id="category-list">
+        <option value="Cuci & Maintenance">
+        <option value="Tambah / Isi Freon">
+        <option value="Bongkar Pasang">
+        <option value="Lainnya">
+      </datalist>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Layanan *</label>
+      <input type="text" id="service-name" placeholder="Cuci AC 0.5 – 2 PK" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Harga (Rp) *</label>
+      <input type="number" id="service-price" placeholder="85000" min="0" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Urutan Tampil</label>
+      <input type="number" id="service-sort" placeholder="1" min="1" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+      <p class="text-[10px] text-slate-400 mt-1">Angka kecil tampil dulu (1, 2, 3, ...)</p>
+    </div>
+    <div class="flex justify-end space-x-2 pt-2">
+      <button onclick="closeServiceModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+      <button onclick="saveService()" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold hover:bg-brand-700 shadow">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Manajemen Teknisi -->
+<div id="modal-tech-manage" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="text-base font-bold text-slate-800" id="tech-manage-title">Tambah Teknisi</h3>
+      <button onclick="closeTechManageModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <input type="hidden" id="tech-manage-id">
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Teknisi *</label>
+      <input type="text" id="tech-manage-name" placeholder="Teknisi Andi" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Spesialis</label>
+      <input type="text" id="tech-manage-specialty" placeholder="AC Specialist" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Telepon</label>
+      <input type="tel" id="tech-manage-phone" placeholder="081234567890" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div class="flex justify-end space-x-2 pt-2">
+      <button onclick="closeTechManageModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+      <button onclick="saveTechnicianManage()" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold hover:bg-brand-700 shadow">Simpan</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Reschedule -->
+<div id="modal-reschedule" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="text-base font-bold text-slate-800 flex items-center">
+        <i class="fa-solid fa-calendar-day text-amber-500 mr-2"></i> Ubah Jadwal Servis
+      </h3>
+      <button onclick="closeRescheduleModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <input type="hidden" id="reschedule-id">
+
+    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 text-xs space-y-1">
+      <p class="text-slate-600">Booking: <strong id="reschedule-code" class="text-brand-700">-</strong></p>
+      <p class="text-slate-600">Pelanggan: <strong id="reschedule-customer">-</strong></p>
+      <p class="text-slate-600">Jadwal saat ini: <strong id="reschedule-current" class="text-amber-600">-</strong></p>
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Jadwal Baru *</label>
+      <input type="date" id="reschedule-date" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Alasan Reschedule</label>
+      <select id="reschedule-reason" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        <option value="Permintaan pelanggan">Permintaan pelanggan</option>
+        <option value="Teknisi berhalangan">Teknisi berhalangan</option>
+        <option value="Cuaca buruk">Cuaca buruk</option>
+        <option value="Antrian padat">Antrian padat</option>
+        <option value="Lainnya">Lainnya</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan Tambahan (Opsional)</label>
+      <input type="text" id="reschedule-note" placeholder="Contoh: pelanggan minta minggu depan" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+
+    <div class="flex justify-end space-x-2 pt-2">
+      <button onclick="closeRescheduleModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+      <button onclick="saveReschedule()" class="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 shadow">Ubah Jadwal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Technician Update -->
+<div id="modal-tech-update" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="text-base font-bold text-slate-800">Update Status & Laporan Servis</h3>
+      <button onclick="closeTechModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <input type="hidden" id="modal-job-id">
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Status Pekerjaan</label>
+      <select id="modal-job-status" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+        <option value="Proses Pengerjaan">Proses Pengerjaan (Sedang Di Lokasi)</option>
+        <option value="Selesai">Selesai (Pekerjaan Rampung)</option>
+        <option value="Dibatalkan">Dibatalkan</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan Pengerjaan / Tindakan Teknisi</label>
+      <textarea id="modal-job-notes" rows="3" placeholder="Contoh: Washing indoor-outdoor, ganti kapasitor 35uF, tambah freon R32 20 psi." class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Total Biaya Layanan (Rp)</label>
+      <input type="number" id="modal-job-cost" placeholder="150000" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+        <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Diskon / Potongan Harga (Rp)</label>
+      <input type="number" id="modal-job-discount" placeholder="0" min="0" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+      <p class="text-[10px] text-slate-400 mt-1">Isi 0 jika tidak ada diskon. Biaya akhir akan otomatis dihitung.</p>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Jadwal Servis Berikutnya (Opsional)</label>
+      <input type="date" id="modal-job-next" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+      <p class="text-[10px] text-slate-400 mt-1">Isi tanggal untuk mengingatkan pelanggan servis berkala (ideal: 3 bulan dari sekarang)</p>
+    </div>
+    <div class="flex justify-end space-x-2 pt-2">
+      <button onclick="closeTechModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+      <button onclick="saveTechnicianUpdate()" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold hover:bg-brand-700 shadow">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 max-w-sm w-full pointer-events-none px-4"></div>
+
+<div id="modal-confirm" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative space-y-4">
+    <div class="flex items-center space-x-3 text-amber-600">
+      <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+      <h3 class="text-base font-bold text-slate-800">Konfirmasi Tindakan</h3>
+    </div>
+    <p id="modal-confirm-msg" class="text-xs text-slate-600 leading-relaxed"></p>
+    <div class="flex justify-end space-x-2 pt-2">
+      <button id="btn-confirm-cancel" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200">Batal</button>
+      <button id="btn-confirm-ok" class="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 shadow">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   KONFIGURASI API
+   ============================================================ */
+const API_BASE = 'https://mitra-teknik-mandiri.intankelinci08.workers.dev';
+
+let currentRole = 'customer';
+let cachedBookings = [];
+let cachedTechnicians = [];
+let cachedServices = [];
+let pendingRole = null;
+
+// Session hanya di memori — hilang saat halaman di-refresh atau tab ditutup
+const AUTH_KEY = 'mtm_auth_session';
+let sessionAuth = null;
+
+function getAuth() {
+  if (sessionAuth) return sessionAuth;
+  const stored = localStorage.getItem(AUTH_KEY);
+  if (stored) {
+    sessionAuth = JSON.parse(stored);
+    return sessionAuth;
+  }
+  return null;
+}
+
+function setAuth(data) {
+  sessionAuth = data;
+  localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+}
+
+function clearAuth() {
+  sessionAuth = null;
+  localStorage.removeItem(AUTH_KEY);
+}
+
+/* ============================================================
+   API HELPER
+   ============================================================ */
+async function apiCall(path, method = 'GET', body = null) {
+  const auth = getAuth();
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (auth) opts.headers['Authorization'] = 'Bearer ' + auth.token;
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(API_BASE + path, opts);
+  if (res.status === 401) {
+    clearAuth();
+    throw new Error('UNAUTHORIZED');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'API error ' + res.status);
+  }
+  return res.json();
+}
+/* ============ RESCHEDULE ============ */
+let rescheduleCallback = null;
+
+function openRescheduleModal(id) {
+  const b = cachedBookings.find(x => x.id === id);
+  if (!b) return;
+
+  document.getElementById('reschedule-id').value = b.id;
+  document.getElementById('reschedule-code').textContent = b.id;
+  document.getElementById('reschedule-customer').textContent = `${b.customerName} · ${b.phone}`;
+  document.getElementById('reschedule-current').textContent = b.preferredDate;
+
+  // Default ke besok
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('reschedule-date').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('reschedule-reason').value = 'Permintaan pelanggan';
+  document.getElementById('reschedule-note').value = '';
+
+  document.getElementById('modal-reschedule').classList.remove('hidden');
+}
+
+function closeRescheduleModal() {
+  document.getElementById('modal-reschedule').classList.add('hidden');
+  rescheduleCallback = null;
+}
+
+async function saveReschedule() {
+  const id = document.getElementById('reschedule-id').value;
+  const newDate = document.getElementById('reschedule-date').value;
+  const reason = document.getElementById('reschedule-reason').value;
+  const note = document.getElementById('reschedule-note').value.trim();
+
+  if (!newDate) {
+    showNotification('Pilih tanggal baru terlebih dahulu', 'error');
+    return;
+  }
+
+  const b = cachedBookings.find(x => x.id === id);
+  if (!b) return;
+
+  // Gabungkan alasan + catatan ke techNotes
+  const logText = `[Reschedule ${new Date().toLocaleDateString('id-ID')}] ${reason}${note ? ' - ' + note : ''}`;
+  const newTechNotes = b.techNotes
+    ? `${logText}\n${b.techNotes}`
+    : logText;
+
+  try {
+    await apiCall('/api/bookings/' + id, 'PATCH', {
+      preferredDate: newDate,
+      techNotes: newTechNotes
+    });
+    showNotification('Jadwal berhasil diubah ke ' + newDate, 'success');
+    closeRescheduleModal();
+    await refreshAllViews();
+  } catch (e) {
+    showNotification('Gagal: ' + e.message, 'error');
+  }
+}
+
+function waRescheduleRequest(b) {
+  const adminPhone = '087884026093'; // Nomor admin
+  const text = `Halo Admin Mitra Teknik Mandiri,\n\n` +
+    `Saya ${b.customerName} ingin mengajukan perubahan jadwal servis AC.\n\n` +
+    `Kode Booking: ${b.id}\n` +
+    `Jadwal Saat Ini: ${b.preferredDate}\n` +
+    `Layanan: ${b.serviceType} (${b.acBrand})\n\n` +
+    `Mohon informasi jadwal penggantinya. Terima kasih.`;
+  return waLink(adminPhone, text);
+}
+
+/* ============ WHATSAPP HELPER ============ */
+function waLink(phone, text) {
+  const num = (phone || '').replace(/\D/g, '').replace(/^0/, '62');
+  return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
+}
+
+function waKonfirmasiBooking(b) {
+  const text = `Halo Bapak/Ibu ${b.customerName},\n\n` +
+    `Kami dari Mitra Teknik Mandiri ingin menginformasikan bahwa booking servis AC Anda sudah kami terima dengan kode ${b.id}.\n\n` +
+    `Kami akan segera menghubungi Anda untuk konfirmasi jadwal teknisi.\n\n` +
+    `Terima kasih.`;
+  return waLink(b.phone, text);
+}
+
+function waTeknisiOTW(b) {
+  const text = `Halo Bapak/Ibu ${b.customerName},\n\n` +
+    `Kami dari Mitra Teknik Mandiri ingin menginformasikan bahwa teknisi kami ${b.assignedTech} sedang menuju lokasi Anda untuk servis AC (kode booking: ${b.id}).\n\n` +
+    `Mohon ditunggu kedatangannya.\n\n` +
+    `Terima kasih.`;
+  return waLink(b.phone, text);
+}
+
+function waServisSelesai(b) {
+  const total = (Number(b.cost) || 0) - (Number(b.discount) || 0);
+  const text = `Halo Bapak/Ibu ${b.customerName},\n\n` +
+    `Kami dari Mitra Teknik Mandiri ingin menginformasikan bahwa servis AC Anda sudah selesai dikerjakan.\n\n` +
+    `Kode Booking: ${b.id}\n` +
+    `Jenis Layanan: ${b.serviceType} (${b.acBrand})\n` +
+    `Total Biaya: Rp ${total.toLocaleString('id-ID')}\n\n` +
+    `Terima kasih telah menggunakan jasa kami.`;
+  return waLink(b.phone, text);
+}
+
+/* ============ RENDER DAFTAR HARGA (dari database) ============ */
+function renderPriceList() {
+  const container = document.getElementById('price-list-content');
+  if (!container) return;
+
+  if (!cachedServices || cachedServices.length === 0) {
+    container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Belum ada layanan.</p>`;
+    return;
+  }
+
+  // Kelompokkan per kategori
+  const grouped = {};
+  for (const s of cachedServices) {
+    if (!grouped[s.category]) grouped[s.category] = [];
+    grouped[s.category].push(s);
+  }
+
+  // Ikon per kategori
+  const icons = {
+    'Cuci & Maintenance': 'fa-broom',
+    'Tambah / Isi Freon': 'fa-wind',
+    'Bongkar Pasang': 'fa-screwdriver-wrench',
+    'Lainnya': 'fa-plus'
+  };
+
+  container.innerHTML = Object.entries(grouped).map(([category, items]) => `
+    <div class="bg-white rounded-xl p-4 border border-slate-100">
+      <h4 class="text-xs font-bold text-brand-700 uppercase tracking-wider mb-3 flex items-center">
+        <i class="fa-solid ${icons[category] || 'fa-tag'} mr-2"></i> ${category}
+      </h4>
+      <table class="w-full text-xs">
+        <tbody class="divide-y divide-slate-100">
+          ${items.map(s => `
+            <tr>
+              <td class="py-1.5 text-slate-700">${s.name}</td>
+              <td class="py-1.5 text-right font-semibold text-slate-800">Rp ${Number(s.price).toLocaleString('id-ID')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+}
+
+function populateServiceDropdown() {
+  const sel = document.getElementById('cust-service-type');
+  if (!sel) return;
+  const prev = sel.value;
+  if (!cachedServices || cachedServices.length === 0) return;
+
+  sel.innerHTML = cachedServices.map(s =>
+    `<option value="${s.name}">${s.name}</option>`
+  ).join('');
+
+  if (prev && cachedServices.some(s => s.name === prev)) sel.value = prev;
+}
+
+/* ============ TOGGLE DAFTAR HARGA ============ */
+function togglePriceList() {
+  const el = document.getElementById('price-list');
+  const chev = document.getElementById('price-chevron');
+  if (!el) return;
+  el.classList.toggle('hidden');
+  if (el.classList.contains('hidden')) {
+    chev.style.transform = '';
+  } else {
+    chev.style.transform = 'rotate(180deg)';
+  }
+}
+
+
+/* ============ FORMAT TANGGAL ============ */
+function formatTanggal(isoDate) {
+  if (!isoDate) return '-';
+  const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [y, m, d] = isoDate.split('-');
+  return `${parseInt(d)} ${bulan[parseInt(m)-1]} ${y}`;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-slate-800';
+  toast.className = `${bgColor} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center justify-between pointer-events-auto transition-all transform translate-y-2 opacity-0 duration-200`;
+  toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="ml-3 text-white/80 hover:text-white">&times;</button>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.remove('translate-y-2','opacity-0'), 10);
+  setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+/* ============================================================
+   CONFIRM
+   ============================================================ */
+let pendingConfirmCallback = null;
+function showConfirmDialog(message, onConfirm) {
+  document.getElementById('modal-confirm-msg').innerText = message;
+  pendingConfirmCallback = onConfirm;
+  document.getElementById('modal-confirm').classList.remove('hidden');
+}
+document.getElementById('btn-confirm-cancel').onclick = function() {
+  document.getElementById('modal-confirm').classList.add('hidden');
+  pendingConfirmCallback = null;
+};
+document.getElementById('btn-confirm-ok').onclick = function() {
+  document.getElementById('modal-confirm').classList.add('hidden');
+  if (pendingConfirmCallback) { pendingConfirmCallback(); pendingConfirmCallback = null; }
+};
+
+/* ============================================================
+   AUTO-LOGOUT TIMER (30 MENIT)
+   ============================================================ */
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 Menit dalam milidetik
+let inactivityTimer;
+
+function resetInactivityTimer() {
+  if (!getAuth()) return; // Abaikan jika belum login
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    if (getAuth()) {
+      clearAuth();
+      showNotification('Sesi berakhir karena tidak ada aktivitas selama 30 menit.', 'error');
+      activateRole('customer');
+    }
+  }, INACTIVITY_TIMEOUT);
+}
+
+// Deteksi jika user ada aktivitas (gerak mouse, ketik, sentuh layar)
+window.addEventListener('mousemove', resetInactivityTimer);
+window.addEventListener('keydown', resetInactivityTimer);
+window.addEventListener('click', resetInactivityTimer);
+window.addEventListener('scroll', resetInactivityTimer);
+window.addEventListener('touchstart', resetInactivityTimer);
+
+/* ============================================================
+   INIT (Saat halaman di-refresh)
+   ============================================================ */
+window.onload = function() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateInput = document.getElementById('cust-date');
+  if(dateInput) dateInput.value = tomorrow.toISOString().split('T')[0];
+
+  // Cek apakah ada sesi login yang tersimpan
+  const auth = getAuth();
+  if (auth) {
+    // Jika ada, langsung buka panel yang sesuai tanpa minta login ulang
+    activateRole(auth.role);
+    resetInactivityTimer(); // Mulai hitung mundur 30 menit
+  } else {
+    // Jika tidak ada, buka mode pelanggan
+    switchRole('customer');
+  }
+};
+
+/* ============================================================
+   ROLE SWITCH & ACTIVATE ROLE
+   ============================================================ */
+function switchRole(role) {
+  // Jika pilih pelanggan, langsung buka tanpa login
+  if (role === 'customer') { 
+    activateRole('customer'); 
+    return; 
+  }
+
+  // Jika sudah login, cek apakah role-nya cocok
+  const auth = getAuth();
+  if (auth) {
+    if (auth.role === 'admin') { activateRole(role); return; }
+    if (auth.role === 'technician' && role === 'technician') { activateRole(role); return; }
+  }
+
+  // Jika belum login, simpan role yang dipilih dan buka modal login
+  pendingRole = role;
+  openLoginModal(role);
+}
+
+async function activateRole(role) {
+  currentRole = role;
+  
+  // Set nilai dropdown agar sesuai dengan role yang sedang aktif
+  const roleSelector = document.getElementById('role-selector');
+  if (roleSelector) roleSelector.value = role;
+
+  // Sembunyikan semua tampilan
+  document.getElementById('view-customer').classList.add('hidden');
+  document.getElementById('view-technician').classList.add('hidden');
+  document.getElementById('view-admin').classList.add('hidden');
+
+  // Tampilkan tampilan yang sesuai
+  document.getElementById(`view-${role}`).classList.remove('hidden');
+  
+  // Update tombol keluar
+  updateLogoutButton();
+
+  // ====== MULAI KODE PERBAIKAN ======
+  if (role === 'customer') {
+    // Paksa ambil data harga khusus untuk pelanggan (tanpa perlu login)
+    await loadServices();
+    renderPriceList();
+    populateServiceDropdown();
+  } else {
+    // Jika admin/teknisi, jalankan fungsi refresh seperti biasa
+    await refreshAllViews();
+  }
+  // ====== AKHIR KODE PERBAIKAN ======
+}
+
+function updateLogoutButton() {
+  const auth = getAuth();
+  let logoutBtn = document.getElementById('btn-logout');
+  const container = document.getElementById('header-actions');
+
+  if (auth) {
+    if (!logoutBtn) {
+      logoutBtn = document.createElement('button');
+      logoutBtn.id = 'btn-logout';
+      logoutBtn.className = 'px-2.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-[11px] font-semibold shadow flex items-center space-x-1';
+      logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i><span>Keluar</span>';
+      logoutBtn.onclick = handleLogout;
+      container.appendChild(logoutBtn);
+    }
+  } else if (logoutBtn) {
+    logoutBtn.remove();
+  }
+}
+
+function handleLogout() {
+  clearAuth();
+  cachedBookings = [];
+  showNotification('Berhasil keluar', 'info');
+  activateRole('customer');
+}
+
+/* ============================================================
+   LOGIN MODAL
+   ============================================================ */
+function openLoginModal(role) {
+  document.getElementById('login-role-label').textContent = role === 'admin' ? 'Admin' : 'Teknisi';
+  
+  // TAMBAHKAN BARIS INI UNTUK MENGOSONGKAN KOLOM
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('modal-login').classList.remove('hidden');
+  setTimeout(() => document.getElementById('login-password').focus(), 100);
+}
+
+function closeLoginModal() {
+  document.getElementById('modal-login').classList.add('hidden');
+  // Kembalikan dropdown ke role yang sedang aktif saat ini
+  if (currentRole) document.getElementById('role-selector').value = currentRole;
+  pendingRole = null;
+}
+
+document.getElementById('form-login').onsubmit = async (e) => {
+  e.preventDefault();
+  
+  // Ambil data dari form
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('btn-login-submit');
+  const errEl = document.getElementById('login-error');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
+  errEl.classList.add('hidden');
+
+  try {
+    const res = await fetch(API_BASE + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }) // Kirim username & password
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login gagal');
+
+    // Validasi Role (Cegah Admin masuk ke Teknisi, dll)
+    if (pendingRole === 'admin' && data.role !== 'admin') {
+      throw new Error('Akun ini bukan Admin');
+    }
+    if (pendingRole === 'technician' && data.role !== 'technician') {
+      throw new Error('Akun ini bukan Teknisi');
+    }
+
+    // Simpan sesi login (termasuk nama user)
+    setAuth({ token: data.token, role: data.role, name: data.name });
+    
+    const targetRole = pendingRole;
+    closeLoginModal();
+    showNotification('Login berhasil sebagai ' + data.name, 'success');
+    
+    // Buka panel sesuai role
+    await activateRole(targetRole);
+    
+    // BARIS INI UNTUK MEMULAI TIMER 30 MENIT 
+    resetInactivityTimer(); 
+
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Login';
+  }
+};
+
+/* ============================================================
+   REFRESH DATA
+   ============================================================ */
+async function refreshAllViews() {
+  if (!getAuth()) return;
+
+  try {
+    cachedBookings = await apiCall('/api/bookings');
+  } catch (e) {
+    if (e.message === 'UNAUTHORIZED') {
+      showNotification('Sesi berakhir, silakan login ulang', 'error');
+      activateRole('customer');
+      return;
+    }
+    showNotification('Gagal memuat data: ' + e.message, 'error');
+    return;
+  }
+  await loadTechnicians();
+  populateTechSelectors();
+    await loadServices();
+  renderPriceList();
+  populateServiceDropdown();
+
+  if (currentRole === 'technician') renderTechnicianJobs();
+  if (currentRole === 'admin') {
+    renderAdminDashboard();
+    renderReminders();
+    renderAdminTechnicians();
+    renderAdminServices();
+    filterHistoryLogs('admin');
+        await loadUsers();
+    renderAdminUsers();
+
+    // Set default bulan untuk laporan (bulan ini)
+    const repMonth = document.getElementById('report-month');
+    if (repMonth && !repMonth.value) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      repMonth.value = `${y}-${m}`;
+    }
+  }
+  filterHistoryLogs('tech');
+}
+
+/* ============================================================
+   CUSTOMER: BOOKING
+   ============================================================ */
+async function handleCustomerBooking(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-submit-booking');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Mengirim…</span>';
+
+  try {
+    const newBooking = {
+      customerName:  document.getElementById('cust-name').value,
+      phone:         document.getElementById('cust-phone').value,
+      address:       document.getElementById('cust-address').value,
+      acBrand:       document.getElementById('cust-ac-brand').value,
+      serviceType:   document.getElementById('cust-service-type').value,
+      preferredDate: document.getElementById('cust-date').value,
+      notes:         document.getElementById('cust-notes').value
+    };
+    const created = await apiCall('/api/bookings', 'POST', newBooking);
+    showNotification(`Booking Berhasil! Kode: ${created.id}`, 'success');
+    document.getElementById('track-phone').value = created.phone;
+    document.getElementById('cust-name').value = '';
+    document.getElementById('cust-phone').value = '';
+    document.getElementById('cust-notes').value = '';
+    trackCustomerBooking();
+  } catch (err) {
+    showNotification('Gagal: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i><span>Kirim Permintaan Booking</span>';
+  }
+}
+
+/* ============================================================
+   CUSTOMER: TRACKING
+   ============================================================ */
+async function trackCustomerBooking() {
+  const phoneInput = document.getElementById('track-phone').value.trim();
+  const container = document.getElementById('tracking-results');
+
+  if (!phoneInput) {
+    container.innerHTML = `<p class="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">Silakan masukkan nomor HP terlebih dahulu.</p>`;
+    return;
+  }
+
+  container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Memuat…</p>`;
+
+  try {
+    const found = await apiCall('/api/track?phone=' + encodeURIComponent(phoneInput));
+
+    if (found.length === 0) {
+      container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-4">Tidak ada riwayat pemesanan dengan nomor HP ini.</p>`;
+      return;
+    }
+
+    container.innerHTML = found.map(b => {
+      let badge = '';
+      if (b.status === 'Pending') badge = `<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">Menunggu Teknisi</span>`;
+      else if (b.status === 'Proses Pengerjaan') badge = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">Teknisi Bekerja</span>`;
+      else if (b.status === 'Selesai') badge = `<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">Selesai</span>`;
+      else badge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">Dibatalkan</span>`;
+
+      return `
+        <div class="border border-slate-200 rounded-xl p-3 space-y-1.5 bg-slate-50/50 hover:bg-white transition">
+          <div class="flex justify-between items-center">
+            <span class="font-mono font-bold text-xs text-brand-700">${b.id}</span>${badge}
+          </div>
+          <p class="text-xs font-semibold text-slate-800">${b.serviceType} (${b.acBrand})</p>
+          <p class="text-[11px] text-slate-500"><i class="fa-solid fa-user-gear mr-1"></i>Teknisi: ${b.assignedTech}</p>
+          <p class="text-[11px] text-slate-500"><i class="fa-solid fa-calendar mr-1"></i>Rencana: ${b.preferredDate}</p>
+          ${b.cost > 0 ? `<p class="text-xs font-bold text-slate-700 pt-1 border-t">Biaya: Rp ${Number(b.cost).toLocaleString('id-ID')}</p>` : ''}
+          ${(b.status === 'Pending' || b.status === 'Proses Pengerjaan') ? `
+            <a href="${waRescheduleRequest(b)}" target="_blank"
+               class="mt-2 w-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold py-2 rounded-lg flex items-center justify-center space-x-1">
+              <i class="fa-solid fa-calendar-day"></i><span>Ajukan Ubah Jadwal</span>
+            </a>
+          ` : ''}
+        </div>`;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<p class="text-xs text-red-600 text-center py-4">Gagal: ${err.message}</p>`;
+  }
+}
+
+/* ============================================================
+   TECHNICIAN: JOBS
+   ============================================================ */
+function renderTechnicianJobs() {
+  const currentTech = document.getElementById('tech-selector').value;
+  const container = document.getElementById('technician-jobs-list');
+  const myJobs = cachedBookings.filter(b => b.assignedTech === currentTech && b.status !== 'Selesai');
+
+  if (myJobs.length === 0) {
+    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Belum ada tugas aktif untuk ${currentTech}.</div>`;
+    return;
+  }
+
+  container.innerHTML = myJobs.map(j => `
+    <div class="border border-slate-200 rounded-2xl p-4 bg-white shadow-sm space-y-3">
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="text-xs font-mono font-bold text-brand-600">${j.id}</span>
+          <h4 class="font-bold text-slate-800 text-sm">${j.customerName} - ${j.phone}</h4>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${j.status === 'Proses Pengerjaan' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}">${j.status}</span>
+      </div>
+      <div class="text-xs text-slate-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+        <p><strong>Alamat:</strong> ${j.address}</p>
+        <p><strong>Layanan:</strong> ${j.serviceType} (${j.acBrand})</p>
+        <p><strong>Tanggal Servis:</strong> ${j.preferredDate}</p>
+        <p><strong>Keluhan:</strong> ${j.notes || '-'}</p>
+      </div>
+      ${j.techNotes ? `<p class="text-xs text-slate-500 italic bg-amber-50/50 p-2 rounded">Catatan Terakhir: ${j.techNotes}</p>` : ''}
+      <div class="flex justify-end pt-2 gap-2 flex-wrap">
+        <button onclick="openRescheduleModal('${j.id}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-medium shadow flex items-center space-x-1">
+          <i class="fa-solid fa-calendar-day"></i><span>Reschedule</span>
+        </button>
+        <a href="${waTeknisiOTW(j)}" target="_blank"
+           class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-xl font-medium shadow flex items-center space-x-1">
+          <i class="fa-brands fa-whatsapp"></i><span>Kabari OTW</span>
+        </a>
+        <button onclick="openTechModal('${j.id}')" class="bg-brand-600 hover:bg-brand-700 text-white text-xs px-4 py-2 rounded-xl font-medium shadow flex items-center space-x-1">
+          <i class="fa-solid fa-pen-to-square"></i><span>Update Laporan & Status</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   ADMIN: DASHBOARD
+   ============================================================ */
+function renderAdminDashboard() {
+  const tbody = document.getElementById('admin-bookings-tbody');
+  document.getElementById('stat-total').innerText     = cachedBookings.length;
+  document.getElementById('stat-pending').innerText   = cachedBookings.filter(b => b.status === 'Pending').length;
+  document.getElementById('stat-progress').innerText  = cachedBookings.filter(b => b.status === 'Proses Pengerjaan').length;
+  document.getElementById('stat-completed').innerText = cachedBookings.filter(b => b.status === 'Selesai').length;
+
+  if (cachedBookings.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Belum ada booking.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedBookings.map(b => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 font-mono font-bold text-brand-700">${b.id}<br><span class="text-[10px] text-slate-400 font-normal">${b.preferredDate}</span></td>
+      <td class="p-3">
+        <div class="font-semibold text-slate-800">${b.customerName}</div>
+        <div class="text-[11px] text-slate-500">${b.phone}</div>
+      </td>
+      <td class="p-3 max-w-xs truncate" title="${b.address}">${b.address}</td>
+      <td class="p-3">
+        <div class="font-medium text-slate-700">${b.serviceType}</div>
+        <div class="text-[10px] text-slate-400">Merk: ${b.acBrand}</div>
+      </td>
+      <td class="p-3">
+        <select onchange="assignTechnician('${b.id}', this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-brand-500">
+          <option value="Belum Ditugaskan" ${b.assignedTech === 'Belum Ditugaskan' ? 'selected' : ''}>-- Pilih Teknisi --</option>
+          ${cachedTechnicians.map(t => `<option value="${t.name}" ${b.assignedTech === t.name ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+      </td>
+      <td class="p-3">
+        <select onchange="updateBookingStatus('${b.id}', this.value)" class="text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1 outline-none font-semibold ${b.status === 'Selesai' ? 'text-emerald-600' : 'text-slate-700'}">
+          <option value="Pending" ${b.status === 'Pending' ? 'selected' : ''}>Pending</option>
+          <option value="Proses Pengerjaan" ${b.status === 'Proses Pengerjaan' ? 'selected' : ''}>Proses Pengerjaan</option>
+          <option value="Selesai" ${b.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
+          <option value="Dibatalkan" ${b.status === 'Dibatalkan' ? 'selected' : ''}>Dibatalkan</option>
+        </select>
+      </td>
+      <td class="p-3 text-right space-x-1 whitespace-nowrap">
+        <button onclick="openRescheduleModal('${b.id}')" class="text-amber-500 hover:bg-amber-50 p-1.5 rounded" title="Ubah Jadwal">
+          <i class="fa-solid fa-calendar-day"></i>
+        </button>
+        <a href="${waKonfirmasiBooking(b)}" target="_blank"
+           class="inline-block text-green-600 hover:bg-green-50 p-1.5 rounded" title="WA Konfirmasi Booking">
+          <i class="fa-brands fa-whatsapp"></i>
+        </a>
+        ${b.status === 'Selesai' ? `
+          <a href="${waServisSelesai(b)}" target="_blank"
+             class="inline-block text-emerald-600 hover:bg-emerald-50 p-1.5 rounded" title="WA Selesai + Tagihan">
+            <i class="fa-solid fa-receipt"></i>
+          </a>
+        ` : ''}
+        <button onclick="deleteBooking('${b.id}')" class="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50" title="Hapus">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ============================================================
+   ADMIN: ACTIONS
+   ============================================================ */
+async function assignTechnician(id, techName) {
+  try {
+    const body = { assignedTech: techName };
+    if (techName !== 'Belum Ditugaskan') {
+      const current = cachedBookings.find(b => b.id === id);
+      if (current && current.status === 'Pending') body.status = 'Proses Pengerjaan';
+    }
+    await apiCall('/api/bookings/' + id, 'PATCH', body);
+    showNotification('Teknisi diperbarui', 'success');
+    await refreshAllViews();
+  } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+}
+
+async function updateBookingStatus(id, newStatus) {
+  try {
+    await apiCall('/api/bookings/' + id, 'PATCH', { status: newStatus });
+    showNotification('Status diperbarui', 'success');
+    await refreshAllViews();
+  } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+}
+
+function deleteBooking(id) {
+  showConfirmDialog(`Apakah Anda yakin ingin menghapus booking ID ${id}?`, async () => {
+    try {
+      await apiCall('/api/bookings/' + id, 'DELETE');
+      showNotification(`Booking ${id} berhasil dihapus.`, 'info');
+      await refreshAllViews();
+    } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+  });
+}
+/* ============ MANAJEMEN HARGA ============ */
+async function loadServices() {
+  try {
+    const data = await apiCall('/api/services');
+    cachedServices = data.services || [];
+  } catch (e) {
+    cachedServices = [];
+  }
+}
+
+function renderAdminServices() {
+  const tbody = document.getElementById('admin-services-tbody');
+  if (!tbody) return;
+
+  if (!cachedServices || cachedServices.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Belum ada layanan.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedServices.map(s => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 text-slate-600">${s.category}</td>
+      <td class="p-3 font-semibold text-slate-800">${s.name}</td>
+      <td class="p-3 text-right font-bold text-emerald-600">Rp ${Number(s.price).toLocaleString('id-ID')}</td>
+      <td class="p-3 text-right space-x-1">
+        <button onclick="openServiceModal(${s.id})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded" title="Edit">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button onclick="deleteService(${s.id}, '${s.name.replace(/'/g,"\\'")}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded" title="Hapus">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+function openServiceModal(id) {
+  document.getElementById('service-id').value = id || '';
+  const isEdit = id ? true : false;
+  document.getElementById('service-modal-title').textContent = isEdit ? 'Edit Layanan' : 'Tambah Layanan';
+
+  if (isEdit) {
+    const s = cachedServices.find(x => x.id === id);
+    document.getElementById('service-category').value = s ? s.category : '';
+    document.getElementById('service-name').value = s ? s.name : '';
+    document.getElementById('service-price').value = s ? s.price : '';
+    document.getElementById('service-sort').value = s ? s.sort_order : '';
+  } else {
+    document.getElementById('service-category').value = '';
+    document.getElementById('service-name').value = '';
+    document.getElementById('service-price').value = '';
+    document.getElementById('service-sort').value = 99;
+  }
+
+  document.getElementById('modal-service').classList.remove('hidden');
+  setTimeout(() => document.getElementById('service-category').focus(), 100);
+}
+
+function closeServiceModal() {
+  document.getElementById('modal-service').classList.add('hidden');
+}
+
+async function saveService() {
+  const id = document.getElementById('service-id').value;
+  const category = document.getElementById('service-category').value.trim();
+  const name = document.getElementById('service-name').value.trim();
+  const price = Number(document.getElementById('service-price').value) || 0;
+  const sort_order = Number(document.getElementById('service-sort').value) || 99;
+
+  if (!category || !name) {
+    showNotification('Kategori dan nama wajib diisi', 'error');
+    return;
+  }
+
+  try {
+    if (id) {
+      await apiCall('/api/services/' + id, 'PATCH', { category, name, price, sort_order });
+      showNotification('Layanan diperbarui', 'success');
+    } else {
+      await apiCall('/api/services', 'POST', { category, name, price, sort_order });
+      showNotification('Layanan ditambahkan', 'success');
+    }
+    closeServiceModal();
+    await loadServices();
+    renderAdminServices();
+    renderPriceList();
+    populateServiceDropdown();
+  } catch (e) {
+    showNotification('Gagal: ' + e.message, 'error');
+  }
+}
+
+function deleteService(id, name) {
+  showConfirmDialog(`Hapus layanan "${name}"?`, async () => {
+    try {
+      await apiCall('/api/services/' + id, 'DELETE');
+      showNotification('Layanan dihapus', 'info');
+      await loadServices();
+      renderAdminServices();
+      renderPriceList();
+      populateServiceDropdown();
+    } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+  });
+}
+
+
+/* ============ MANAJEMEN TEKNISI ============ */
+async function loadTechnicians() {
+  if (!getAuth()) return;
+  try {
+    const data = await apiCall('/api/technicians');
+    cachedTechnicians = data.technicians || [];
+  } catch (e) {
+    cachedTechnicians = [];
+  }
+}
+
+function populateTechSelectors() {
+  // Dropdown di header Panel Teknisi
+  const sel = document.getElementById('tech-selector');
+  if (sel) {
+    const prev = sel.value;
+    sel.innerHTML = cachedTechnicians.length === 0
+      ? '<option value="">-- Belum ada teknisi --</option>'
+      : cachedTechnicians.map(t =>
+          `<option value="${t.name}">${t.name}${t.specialty ? ' (' + t.specialty + ')' : ''}</option>`
+        ).join('');
+    if (prev && cachedTechnicians.some(t => t.name === prev)) sel.value = prev;
+  }
+  // Dropdown di tabel admin (assign teknisi) — di-render ulang lewat renderAdminDashboard
+}
+
+function renderAdminTechnicians() {
+  const tbody = document.getElementById('admin-technicians-tbody');
+  if (!tbody) return;
+
+  if (cachedTechnicians.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Belum ada teknisi.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedTechnicians.map(t => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 font-semibold text-slate-800">${t.name}</td>
+      <td class="p-3 text-slate-600">${t.specialty || '-'}</td>
+      <td class="p-3 text-slate-600">${t.phone || '-'}</td>
+      <td class="p-3 text-right space-x-1">
+        <button onclick="openTechManageModal(${t.id})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded" title="Edit">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button onclick="deleteTechnician(${t.id}, '${t.name.replace(/'/g,"\\'")}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded" title="Hapus">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openTechManageModal(id) {
+  document.getElementById('tech-manage-id').value = id || '';
+  const isEdit = id ? true : false;
+  document.getElementById('tech-manage-title').textContent = isEdit ? 'Edit Teknisi' : 'Tambah Teknisi';
+
+  if (isEdit) {
+    const t = cachedTechnicians.find(x => x.id === id);
+    document.getElementById('tech-manage-name').value = t ? t.name : '';
+    document.getElementById('tech-manage-specialty').value = t ? (t.specialty || '') : '';
+    document.getElementById('tech-manage-phone').value = t ? (t.phone || '') : '';
+  } else {
+    document.getElementById('tech-manage-name').value = '';
+    document.getElementById('tech-manage-specialty').value = '';
+    document.getElementById('tech-manage-phone').value = '';
+  }
+
+  document.getElementById('modal-tech-manage').classList.remove('hidden');
+  setTimeout(() => document.getElementById('tech-manage-name').focus(), 100);
+}
+
+function closeTechManageModal() {
+  document.getElementById('modal-tech-manage').classList.add('hidden');
+}
+
+async function saveTechnicianManage() {
+  const id = document.getElementById('tech-manage-id').value;
+  const name = document.getElementById('tech-manage-name').value.trim();
+  const specialty = document.getElementById('tech-manage-specialty').value.trim();
+  const phone = document.getElementById('tech-manage-phone').value.trim();
+
+  if (!name) {
+    showNotification('Nama teknisi wajib diisi', 'error');
+    return;
+  }
+
+  try {
+    if (id) {
+      await apiCall('/api/technicians/' + id, 'PATCH', { name, specialty, phone });
+      showNotification('Teknisi diperbarui', 'success');
+    } else {
+      await apiCall('/api/technicians', 'POST', { name, specialty, phone });
+      showNotification('Teknisi ditambahkan', 'success');
+    }
+    closeTechManageModal();
+    await loadTechnicians();
+    populateTechSelectors();
+    renderAdminTechnicians();
+    if (currentRole === 'admin') renderAdminDashboard();
+  } catch (e) {
+    showNotification('Gagal: ' + e.message, 'error');
+  }
+}
+
+function deleteTechnician(id, name) {
+  showConfirmDialog(`Hapus teknisi "${name}"?`, async () => {
+    try {
+      await apiCall('/api/technicians/' + id, 'DELETE');
+      showNotification('Teknisi dihapus', 'info');
+      await loadTechnicians();
+      populateTechSelectors();
+      renderAdminTechnicians();
+      if (currentRole === 'admin') renderAdminDashboard();
+    } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+  });
+}
+
+/* ============================================================
+   PENGINGAT SERVIS BERKALA
+   ============================================================ */
+async function renderReminders() {
+  const container = document.getElementById('reminders-list');
+  if (!container) return;
+
+  try {
+    const reminders = await apiCall('/api/reminders');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cutoff = new Date(today);
+    cutoff.setDate(cutoff.getDate() + 90);
+
+    const upcoming = reminders.filter(r => {
+      if (!r.nextServiceDate) return false;
+      const d = new Date(r.nextServiceDate + 'T00:00:00');
+      return d <= cutoff;
+    });
+
+    if (upcoming.length === 0) {
+      container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Belum ada pengingat dalam 3 bulan ke depan.</p>`;
+      return;
+    }
+
+    container.innerHTML = upcoming.map(r => {
+      const d = new Date(r.nextServiceDate + 'T00:00:00');
+      const isOverdue = d < today;
+      const isToday = d.getTime() === today.getTime();
+      const daysDiff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+
+      let badge = '';
+      if (isOverdue) badge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">Terlambat ${Math.abs(daysDiff)} hari</span>`;
+      else if (isToday) badge = `<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">Hari ini</span>`;
+      else badge = `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">${daysDiff} hari lagi</span>`;
+
+      const waNumber = (r.phone || '').replace(/\D/g, '').replace(/^0/, '62');
+      const waText = encodeURIComponent(
+        `Halo ${r.customerName}, ini dari Mitra Teknik Mandiri.\n\n` +
+        `Sudah waktunya servis berkala AC Anda (${formatTanggal(r.nextServiceDate)}). ` +
+        `Apakah ingin dijadwalkan? Terima kasih.`
+      );
+
+      return `
+        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:bg-slate-50 transition">
+          <div class="flex justify-between items-start gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <span class="font-bold text-sm text-slate-800">${r.customerName}</span>
+                ${badge}
+              </div>
+              <p class="text-xs text-slate-500">📞 ${r.phone} · 📍 ${r.address}</p>
+              <p class="text-xs text-slate-500 mt-1">🗓 Jadwal servis: <strong>${formatTanggal(r.nextServiceDate)}</strong></p>
+              <p class="text-[11px] text-slate-400">Servis terakhir: ${r.serviceType} (${r.acBrand})</p>
+            </div>
+            <a href="https://wa.me/${waNumber}?text=${waText}" target="_blank"
+               class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded-lg font-semibold flex items-center space-x-1 whitespace-nowrap">
+              <i class="fa-brands fa-whatsapp"></i><span>Ingatkan</span>
+            </a>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<p class="text-xs text-red-500 text-center py-4">Gagal memuat: ${e.message}</p>`;
+  }
+}
+
+/* ============================================================
+   LAPORAN PENDAPATAN
+   ============================================================ */
+let cachedReport = null;
+
+async function loadReport() {
+  const monthInput = document.getElementById('report-month');
+  if (!monthInput.value) {
+    showNotification('Pilih bulan terlebih dahulu', 'error');
+    return;
+  }
+
+  const month = monthInput.value;
+
+  try {
+    const data = await apiCall('/api/reports?month=' + month);
+    cachedReport = data;
+
+    document.getElementById('rep-income').innerText = 'Rp ' + Number(data.summary.totalIncome).toLocaleString('id-ID');
+    document.getElementById('rep-count').innerText  = data.summary.totalBookings;
+    document.getElementById('rep-avg').innerText    = 'Rp ' + Number(data.summary.avgPerBooking).toLocaleString('id-ID');
+        const repDisc = document.getElementById('rep-discount');
+    if (repDisc) repDisc.innerText = 'Rp ' + Number(data.summary.totalDiscount || 0).toLocaleString('id-ID');
+
+    const techBox = document.getElementById('rep-by-tech');
+    if (data.byTechnician.length === 0) {
+      techBox.innerHTML = `<p class="text-slate-400 italic text-center py-4">Belum ada data.</p>`;
+    } else {
+      techBox.innerHTML = data.byTechnician.map(t => `
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-200 last:border-0">
+          <span class="font-medium text-slate-700">${t.name}</span>
+          <span class="text-right">
+            <strong class="text-slate-800">${t.tasks}x</strong>
+            <span class="text-emerald-600 ml-2 font-semibold">Rp ${Number(t.income).toLocaleString('id-ID')}</span>
+          </span>
+        </div>
+      `).join('');
+    }
+
+    const srvBox = document.getElementById('rep-by-service');
+    if (data.byService.length === 0) {
+      srvBox.innerHTML = `<p class="text-slate-400 italic text-center py-4">Belum ada data.</p>`;
+    } else {
+      srvBox.innerHTML = data.byService.map(s => `
+        <div class="flex justify-between items-center py-1.5 border-b border-slate-200 last:border-0">
+          <span class="font-medium text-slate-700">${s.name}</span>
+          <span class="text-right">
+            <strong class="text-slate-800">${s.count}x</strong>
+            <span class="text-emerald-600 ml-2 font-semibold">Rp ${Number(s.income).toLocaleString('id-ID')}</span>
+          </span>
+        </div>
+      `).join('');
+    }
+
+    const tbody = document.getElementById('rep-detail-tbody');
+    if (data.bookings.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada servis selesai di bulan ini.</td></tr>`;
+    } else {
+      tbody.innerHTML = data.bookings.map(b => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-2">${b.preferredDate}</td>
+          <td class="p-2 font-mono text-brand-700 font-bold">${b.id}</td>
+          <td class="p-2">${b.customerName}</td>
+          <td class="p-2">${b.serviceType} (${b.acBrand})</td>
+          <td class="p-2">${b.assignedTech}</td>
+          <td class="p-2 text-right font-bold text-emerald-600">Rp ${Number(b.cost).toLocaleString('id-ID')}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (e) {
+    showNotification('Gagal memuat laporan: ' + e.message, 'error');
+  }
+}
+
+function exportReportExcel() {
+  if (!cachedReport || !cachedReport.bookings || cachedReport.bookings.length === 0) {
+    showNotification('Belum ada data untuk diexport', 'error');
+    return;
+  }
+  
+  // 1. Siapkan data dalam bentuk Array (baris & kolom)
+  const data = [
+    ['Tanggal', 'ID Booking', 'Pelanggan', 'Nomor HP', 'Alamat', 'Layanan', 'Merk AC', 'Teknisi', 'Biaya (Rp)']
+  ];
+  
+  for (const b of cachedReport.bookings) {
+    data.push([
+      b.preferredDate,
+      b.id,
+      b.customerName,
+      b.phone,
+      b.address,
+      b.serviceType,
+      b.acBrand,
+      b.assignedTech,
+      b.cost
+    ]);
+  }
+
+  // 2. Buat worksheet
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // 3. Atur lebar kolom agar rapi saat dibuka di Excel
+  ws['!cols'] = [
+    {wch: 12}, // Tanggal
+    {wch: 15}, // ID
+    {wch: 20}, // Pelanggan
+    {wch: 15}, // HP
+    {wch: 30}, // Alamat
+    {wch: 25}, // Layanan
+    {wch: 12}, // Merk
+    {wch: 15}, // Teknisi
+    {wch: 15}  // Biaya
+  ];
+
+  // 4. Buat workbook dan tambahkan worksheet
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Laporan Pendapatan");
+
+  // 5. Download sebagai file .xlsx
+  XLSX.writeFile(wb, `Laporan-MTM-${cachedReport.month}.xlsx`);
+  
+  showNotification('File Excel berhasil diunduh', 'success');
+}
+
+/* ============================================================
+   HISTORY LOGS
+   ============================================================ */
+function filterHistoryLogs(view) {
+  const keyword = (document.getElementById(`${view}-search-history`)?.value || '').toLowerCase();
+  const tbody = document.getElementById(`${view}-history-tbody`);
+  if (!tbody) return;
+
+  const completed = cachedBookings.filter(b =>
+    b.status === 'Selesai' && (
+      b.customerName.toLowerCase().includes(keyword) ||
+      b.address.toLowerCase().includes(keyword) ||
+      b.id.toLowerCase().includes(keyword) ||
+      (b.phone || '').toLowerCase().includes(keyword)
+    )
+  );
+
+  if (completed.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada riwayat servis selesai ditemukan.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = completed.map(b => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 font-medium text-slate-700">${b.preferredDate}</td>
+      <td class="p-3 font-semibold text-slate-800">${b.customerName}<br><span class="text-[10px] text-slate-400 font-normal">${b.phone}</span></td>
+      <td class="p-3 max-w-xs truncate">${b.address}</td>
+      <td class="p-3">${b.serviceType} (${b.acBrand})</td>
+      <td class="p-3 text-slate-600 italic max-w-xs truncate" title="${b.techNotes || '-'}">${b.techNotes || '-'}</td>
+      <td class="p-3 font-bold text-emerald-600">Rp ${Number(b.cost).toLocaleString('id-ID')}</td>
+    </tr>
+  `).join('');
+}
+
+/* ============================================================
+   TECH MODAL
+   ============================================================ */
+function openTechModal(id) {
+  const job = cachedBookings.find(b => b.id === id);
+  if (!job) return;
+  document.getElementById('modal-job-id').value = job.id;
+  document.getElementById('modal-job-status').value = job.status === 'Pending' ? 'Proses Pengerjaan' : job.status;
+  document.getElementById('modal-job-notes').value = job.techNotes || '';
+  document.getElementById('modal-job-cost').value = job.cost || 150000;
+  document.getElementById('modal-job-discount').value = job.discount || 0;
+
+  // Auto-fill +90 hari (3 bulan) jika belum pernah diisi
+  if (job.nextServiceDate) {
+    document.getElementById('modal-job-next').value = job.nextServiceDate;
+  } else {
+    const d = new Date();
+    d.setDate(d.getDate() + 90);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    document.getElementById('modal-job-next').value = `${y}-${m}-${day}`;
+  }
+
+  document.getElementById('modal-tech-update').classList.remove('hidden');
+}
+function closeTechModal() {
+  document.getElementById('modal-tech-update').classList.add('hidden');
+}
+async function saveTechnicianUpdate() {
+  const id = document.getElementById('modal-job-id').value;
+  try {
+    await apiCall('/api/bookings/' + id, 'PATCH', {
+      status:    document.getElementById('modal-job-status').value,
+      techNotes: document.getElementById('modal-job-notes').value,
+      cost:      Number(document.getElementById('modal-job-cost').value) || 0,
+      discount:  Number(document.getElementById('modal-job-discount').value) || 0,
+      nextServiceDate: document.getElementById('modal-job-next').value || null
+    });
+    showNotification('Laporan tersimpan', 'success');
+    closeTechModal();
+    await refreshAllViews();
+  } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+}
+
+/* ============================================================
+   SEED & RESET
+   ============================================================ */
+async function seedSampleData() {
+  try {
+    await apiCall('/api/bookings/seed', 'POST');
+    showNotification('Data contoh berhasil diisi!', 'success');
+    await refreshAllViews();
+  } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+}
+
+function resetData() {
+  showConfirmDialog('Apakah Anda yakin ingin mengosongkan semua data booking?', async () => {
+    try {
+      await apiCall('/api/bookings/reset', 'POST');
+      showNotification('Semua data berhasil dikosongkan.', 'info');
+      await refreshAllViews();
+    } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+  });
+}
+
+/* ============================================================
+   MANAJEMEN AKUN (ADMIN)
+   ============================================================ */
+let cachedUsers = [];
+
+async function loadUsers() {
+  try {
+    const data = await apiCall('/api/users');
+    cachedUsers = data.users || [];
+  } catch (e) {
+    cachedUsers = [];
+  }
+}
+
+function renderAdminUsers() {
+  const tbody = document.getElementById('admin-users-tbody');
+  if (!tbody) return;
+
+  if (cachedUsers.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Belum ada data user.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = cachedUsers.map(u => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 font-semibold text-slate-800">${u.name}</td>
+      <td class="p-3 font-mono text-brand-600">${u.username}</td>
+      <td class="p-3"><span class="bg-slate-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase">${u.role}</span></td>
+      <td class="p-3 text-right space-x-1">
+        <button onclick="openEditAkunModal('${u.username}')" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded" title="Edit">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        ${u.username !== 'admin' ? `
+          <button onclick="deleteUser(${u.id}, '${u.name}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded" title="Hapus">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        ` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+// Buka Modal untuk TAMBAH Akun Baru
+function openAddAkunModal() {
+  document.getElementById('edit-old-username').value = '';
+  document.getElementById('edit-name').value = '';
+  document.getElementById('edit-new-username').value = '';
+  document.getElementById('edit-new-password').value = '';
+  document.getElementById('edit-role').value = 'technician';
+  document.getElementById('modal-akun-title').textContent = 'Tambah Akun Baru';
+  document.getElementById('modal-edit-akun').classList.remove('hidden');
+}
+
+// Buka Modal untuk EDIT Akun
+function openEditAkunModal(username) {
+  const u = cachedUsers.find(x => x.username === username);
+  if (!u) return;
+  document.getElementById('edit-old-username').value = u.username;
+  document.getElementById('edit-name').value = u.name;
+  document.getElementById('edit-new-username').value = u.username;
+  document.getElementById('edit-new-password').value = ''; // Kosongkan untuk minta isi ulang
+  document.getElementById('edit-role').value = u.role;
+  document.getElementById('modal-akun-title').textContent = 'Edit Akun: ' + u.name;
+  document.getElementById('modal-edit-akun').classList.remove('hidden');
+}
+
+function closeEditAkunModal() {
+  document.getElementById('modal-edit-akun').classList.add('hidden');
+}
+
+async function saveEditAkun() {
+  const oldUsername = document.getElementById('edit-old-username').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const newUsername = document.getElementById('edit-new-username').value.trim().toLowerCase();
+  const newPassword = document.getElementById('edit-new-password').value.trim();
+  const role = document.getElementById('edit-role').value;
+
+  if (!name || !newUsername || !newPassword) {
+    showNotification('Semua kolom wajib diisi', 'error');
+    return;
+  }
+
+  try {
+    if (oldUsername) {
+      // Mode Edit
+      await apiCall('/api/users', 'PATCH', { 
+        target_username: oldUsername, 
+        new_username: newUsername, 
+        new_password: newPassword,
+        name: name,
+        role: role
+      });
+      showNotification('Akun berhasil diperbarui', 'success');
+    } else {
+      // Mode Tambah Baru
+      await apiCall('/api/users', 'POST', { 
+        username: newUsername, 
+        password: newPassword, 
+        name: name, 
+        role: role 
+      });
+      showNotification('Akun baru berhasil dibuat', 'success');
+    }
+    
+    closeEditAkunModal();
+    await loadUsers();
+    renderAdminUsers();
+  } catch (e) {
+    showNotification('Gagal: ' + e.message, 'error');
+  }
+}
+
+function deleteUser(id, name) {
+  showConfirmDialog(`Hapus akun "${name}" secara permanen?`, async () => {
+    try {
+      await apiCall('/api/users/' + id, 'DELETE');
+      showNotification('Akun dihapus', 'info');
+      await loadUsers();
+      renderAdminUsers();
+    } catch (e) { showNotification('Gagal: ' + e.message, 'error'); }
+  });
+}
+</script>
+</body>
+</html>

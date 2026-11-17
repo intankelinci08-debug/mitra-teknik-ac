@@ -1,0 +1,8 @@
+name = "mitra-teknik-mandiri"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mitra-teknik-db"
+database_id = "e07befe1-bd41-4e54-b5a1-21c706c70389"
