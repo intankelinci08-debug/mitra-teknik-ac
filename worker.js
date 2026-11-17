@@ -1,5 +1,5 @@
 /* ============================================================
-   Mitra Teknik Mandiri — Backend Worker Lengkap
+   Mitra Teknik Mandiri — Backend Worker Lengkap (FINAL FIX)
    ============================================================ */
 
 const SECRET = 'mtm-secret-2026-ganti-kalau-perlu';
@@ -23,7 +23,6 @@ export default {
       if (path === '/api/login' && method === 'POST') {
         const { username, password } = await request.json();
         
-        // Cari user di tabel 'users' di database D1
         const { results } = await env.DB.prepare(
           'SELECT * FROM users WHERE username = ? AND password = ?'
         ).bind(username.toLowerCase(), password).all();
@@ -35,7 +34,6 @@ export default {
         const user = results[0];
         const token = await makeToken(user.role, TOKEN_HOURS, SECRET);
         
-        // Kembalikan token beserta nama user (untuk ditampilkan di header)
         return json({ token, role: user.role, name: user.name, expiresIn: TOKEN_HOURS * 3600 }, cors);
       }
 
@@ -46,22 +44,24 @@ export default {
         return json({ valid: true, role: session.role }, cors);
       }
 
-      // ============ TRACK BY PHONE (customer) ============
+      // ============ TRACK BY PHONE (customer) - FIXED EXACT MATCH ============
       if (path === '/api/track' && method === 'GET') {
         const phone = url.searchParams.get('phone') || '';
         if (!phone) return json([], cors);
         const { results } = await env.DB.prepare(
           `SELECT id, service_type, ac_brand, status, assigned_tech,
                   preferred_date, cost, created_at
-           FROM bookings WHERE phone LIKE ? ORDER BY created_at DESC`
-        ).bind('%' + phone + '%').all();
+           FROM bookings WHERE phone = ? ORDER BY created_at DESC`
+        ).bind(phone).all();
         return json(results.map(rowToTrack), cors);
       }
 
-      // ============ CREATE BOOKING (customer) ============
+      // ============ CREATE BOOKING (customer) + EMAIL NOTIF ============
       if (path === '/api/bookings' && method === 'POST') {
         const b = await request.json();
         const id = b.id || 'MTM-' + Math.floor(1000 + Math.random() * 9000);
+        
+        // 1. Simpan ke Database D1
         await env.DB.prepare(`
           INSERT INTO bookings
           (id, customer_name, phone, address, ac_brand, service_type,
@@ -78,6 +78,43 @@ export default {
           b.nextServiceDate || null,
           b.discount || 0
         ).run();
+
+        // 2. KIRIM NOTIFIKASI EMAIL (via Resend)
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: 'Sistem MTM <onboarding@resend.dev>',
+              to: ['intankelinci08@gmail.com'], // ⚠️⚠️ GANTI DENGAN EMAIL KAMU YANG TERDAFTAR DI RESEND ⚠️⚠️
+              subject: `🔔 Booking Baru: ${id} - ${b.customerName}`,
+              html: `
+                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                  <h2 style="color: #0284c7;">Ada Pesanan Servis AC Baru!</h2>
+                  <p>Halo Admin, ada pesanan baru yang masuk ke sistem.</p>
+                  <table style="width: 100%; text-align: left; margin-top: 15px;">
+                    <tr><td><strong>Kode Booking</strong></td><td>: ${id}</td></tr>
+                    <tr><td><strong>Nama Pelanggan</strong></td><td>: ${b.customerName}</td></tr>
+                    <tr><td><strong>No HP</strong></td><td>: ${b.phone}</td></tr>
+                    <tr><td><strong>Alamat</strong></td><td>: ${b.address}</td></tr>
+                    <tr><td><strong>Layanan</strong></td><td>: ${b.serviceType} (${b.acBrand})</td></tr>
+                    <tr><td><strong>Tanggal</strong></td><td>: ${b.preferredDate}</td></tr>
+                    <tr><td><strong>Keluhan</strong></td><td>: ${b.notes || '-'}</td></tr>
+                  </table>
+                  <br>
+                  <p>Silakan buka <a href="https://mitra-teknik.pages.dev">Dashboard Admin</a> untuk menugaskan teknisi.</p>
+                </div>
+              `
+            })
+          });
+        } catch (error) {
+          console.error('Gagal mengirim email:', error);
+          // Error email tidak akan menggagalkan proses booking pelanggan
+        }
+
         return json({ id, ...b }, cors, 201);
       }
 
@@ -150,32 +187,6 @@ export default {
         return json({ ok: true }, cors);
       }
 
-      // ============ UPDATE AKUN (admin only) ============
-      if (path === '/api/users' && method === 'PATCH') {
-        const session = await requireAuth(request, SECRET);
-        if (!session || session.role !== 'admin')
-          return json({ error: 'Unauthorized' }, cors, 401);
-
-        const { target_username, new_username, new_password } = await request.json();
-        
-        if (!target_username || !new_password) {
-          return json({ error: 'Data tidak lengkap' }, cors, 400);
-        }
-
-        try {
-          await env.DB.prepare(
-            'UPDATE users SET username = ?, password = ? WHERE username = ?'
-          ).bind(new_username.toLowerCase(), new_password, target_username.toLowerCase()).run();
-          
-          return json({ ok: true }, cors);
-        } catch(e) {
-          if (e.message.includes('UNIQUE')) {
-            return json({ error: 'Username sudah dipakai' }, cors, 400);
-          }
-          return json({ error: e.message }, cors, 500);
-        }
-      }
-
       // ============ GET ALL USERS (admin only) ============
       if (path === '/api/users' && method === 'GET') {
         const session = await requireAuth(request, SECRET);
@@ -209,7 +220,8 @@ export default {
         }
       }
 
-      // ============ PATCH USER (admin only) ============
+      // ============ PATCH USER (admin only) - FIXED DUPLICATE BUG ============
+      // Blok PATCH ganda sudah dihapus, kini hanya ada satu blok yang lengkap
       if (path === '/api/users' && method === 'PATCH') {
         const session = await requireAuth(request, SECRET);
         if (!session || session.role !== 'admin')
@@ -217,13 +229,20 @@ export default {
 
         const { target_username, new_username, new_password, name, role } = await request.json();
         
+        if (!target_username) {
+          return json({ error: 'Target Username tidak ditemukan' }, cors, 400);
+        }
+
         try {
           await env.DB.prepare(
             'UPDATE users SET username = ?, password = ?, name = ?, role = ? WHERE username = ?'
           ).bind(new_username.toLowerCase(), new_password, name, role, target_username.toLowerCase()).run();
           return json({ ok: true }, cors);
         } catch(e) {
-          return json({ error: 'Username sudah dipakai' }, cors, 400);
+          if (e.message.includes('UNIQUE')) {
+             return json({ error: 'Username sudah dipakai' }, cors, 400);
+          }
+          return json({ error: e.message }, cors, 500);
         }
       }
 
@@ -236,7 +255,6 @@ export default {
 
         const userId = userDel[1];
         
-        // Cegah admin menghapus dirinya sendiri (ID 1 biasanya admin utama)
         if (userId == '1') {
            return json({ error: 'Tidak bisa menghapus Admin Utama' }, cors, 400);
         }
@@ -244,7 +262,6 @@ export default {
         await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
         return json({ ok: true }, cors);
       }
-
 
       // ============ GET TECHNICIANS (auth) ============
       if (path === '/api/technicians' && method === 'GET') {
@@ -315,7 +332,7 @@ export default {
         return json({ ok: true }, cors);
       }
 
-      // ============ LAPORAN PENDAPATAN (admin only) ============
+      // ============ LAPORAN PENDAPATAN (admin only) - FIXED DOUBLE COUNT ============
       if (path === '/api/reports' && method === 'GET') {
         const session = await requireAuth(request, SECRET);
         if (!session || session.role !== 'admin')
@@ -329,8 +346,8 @@ export default {
         const { results } = await env.DB.prepare(
           `SELECT * FROM bookings
            WHERE status = 'Selesai'
-             AND (preferred_date LIKE ? OR created_at LIKE ?)`
-        ).bind(month + '%', month + '%').all();
+             AND preferred_date LIKE ?`
+        ).bind(month + '%').all();
 
         const bookings = results.map(rowToBooking);
 
@@ -376,6 +393,7 @@ export default {
         await env.DB.prepare('DELETE FROM bookings').run();
         return json({ ok: true }, cors);
       }
+      
       // ============ GET SERVICES (public) ============
       if (path === '/api/services' && method === 'GET') {
         const { results } = await env.DB.prepare(
